@@ -1,0 +1,38 @@
+import mongoose from 'mongoose';
+
+const outboundSchema = new mongoose.Schema(
+  {
+    drug: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Drug',
+      required: true,
+    },
+    totalQuantity: {
+      type: Number,
+      required: true,
+    },
+    outboundDate: {
+      type: Date,
+      default: Date.now,
+    },
+    notes: {
+      type: String,
+      default: '',
+    },
+    // جزئیات اینکه از چه تاریخ انقضاهایی چقدر کسر شده (برای تاییدیه و شفافیت)
+    breakdown: [
+      {
+        inboundId: { type: mongoose.Schema.Types.ObjectId, ref: 'Inbound' },
+        expiryDate: Date,
+        quantityDeducted: Number,
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const Outbound = mongoose.model('Outbound', outboundSchema);
+
+export default Outbound;

@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+/* تعریف فونت یکان */
+@font-face {
+  font-family: 'Yekan';
+  src: url('./assets/fonts/Sahel.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* اعمال اجباری فونت */
+html, body, *, input, select, button, textarea {
+  font-family: 'Yekan', sans-serif !important;
+}
+
+/* 🚫 پنهان کردن اسکرول‌بار مرورگر */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html, body {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+  overflow-y: auto;
+}
+
+/* 🎨 استایل‌دهی اختصاصی و دارک تقویم هماهنگ با رنگ‌های سبز و مشکی برنامه */
+input[type="date"] {
+  color-scheme: dark !important;
+  background-color: #020617 !important; /* مشکی عمیق Slate-950 */
+  color: #34d399 !important; /* سبز زمردی Emerald-400 */
+  border-radius: 1rem !important; /* lبه‌های بسیار گرد rounded-2xl */
+  padding: 0.5rem 0.8rem !important;
+  outline: none !important;
+  accent-color: #10b981 !important; /* رنگ سبز زمردی برای روز انتخاب‌شده در تقویم */
+}
+
+/* استایل آیکون تقویم به رنگ سبز برنامه همراه با افکت هوور */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  padding: 0.2rem;
+  filter: invert(60%) sepia(80%) saturate(400%) hue-rotate(110deg);
+  transition: all 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  background-color: rgba(16, 185, 129, 0.25);
+  transform: scale(1.1);
+}
+
+/* استایل اعداد داخل فیلد تاریخ */
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  color: #34d399;
+  font-weight: 600;
+}
+
+input[type="date"]::-webkit-datetime-edit-year-field:focus,
+input[type="date"]::-webkit-datetime-edit-month-field:focus,
+input[type="date"]::-webkit-datetime-edit-day-field:focus {
+  background-color: #059669;
+  color: #ffffff;
+  border-radius: 0.3rem;
+}
+
+/* انیمیشن‌ها */
+@keyframes overlayFadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes modalScaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(-15px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes accordionSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(25px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-backdrop {
+  animation: overlayFadeIn 0.2s ease-out forwards;
+}
+
+.modal-box {
+  animation: modalScaleIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.accordion-box {
+  animation: accordionSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-box {
+  animation: toastSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
