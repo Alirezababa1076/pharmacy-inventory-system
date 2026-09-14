@@ -5,8 +5,10 @@ const outboundSchema = new mongoose.Schema(
     drug: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Drug',
-      required: true,
     },
+    drugName: String,
+    drugBrand: String,
+    dosageForm: String,
     totalQuantity: {
       type: Number,
       required: true,
@@ -19,7 +21,6 @@ const outboundSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    // جزئیات اینکه از چه تاریخ انقضاهایی چقدر کسر شده (برای تاییدیه و شفافیت)
     breakdown: [
       {
         inboundId: { type: mongoose.Schema.Types.ObjectId, ref: 'Inbound' },

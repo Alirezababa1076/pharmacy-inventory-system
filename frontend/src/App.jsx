@@ -4,10 +4,10 @@ import {
   Pill, PlusCircle, LogOut, Search, AlertTriangle, ShieldAlert, 
   PackageCheck, Sun, Moon, ChevronDown, ChevronUp, Edit3, Trash2,
   FileText, Layers, CheckCircle2, KeyRound, TrendingDown, TrendingUp, 
-  SlidersHorizontal, Wrench, X, History, FileSpreadsheet, Printer, AlertOctagon, Filter
+  SlidersHorizontal, Wrench, X, History, FileSpreadsheet, Printer, AlertOctagon, Filter, Calendar
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://pharmacy-inventory-system-e1iq.onrender.com/api';
 
 function CustomSelect({ options, value, onChange, placeholder, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -90,34 +90,46 @@ export default function App() {
 
   const [expandedDrugId, setExpandedDrugId] = useState(null);
 
+  // تاریخچه
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedDrugHistory, setSelectedDrugHistory] = useState(null);
 
+  // ثبت ورود
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newDrug, setNewDrug] = useState({
     name: '', brand: '', dosageForm: 'قرص', unit: 'عدد', dose: '',
     expiryDate: '', quantity: '', location: '', minQuantity: 10
   });
 
+  // ویرایش دارو
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingDrug, setEditingDrug] = useState(null);
 
+  // ویرایش تاریخ انقضای سری خرید
+  const [isEditExpiryOpen, setIsEditExpiryOpen] = useState(false);
+  const [editingInbound, setEditingInbound] = useState({ inboundId: null, newExpiryDate: '' });
+
+  // حذف
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [drugToDelete, setDrugToDelete] = useState(null);
 
+  // اصلاح موجودی
   const [isAdjustModalOpen, setIsEditAdjustOpen] = useState(false);
   const [adjustData, setAdjustData] = useState({ inboundId: null, oldQty: 0, newQty: '', reason: '' });
 
+  // خروج FEFO
   const [isOutModalOpen, setIsOutModalOpen] = useState(false);
   const [selectedDrugForOut, setSelectedDrugForOut] = useState(null);
   const [requestedQty, setRequestedQty] = useState(1);
   const [outNotes, setOutNotes] = useState('');
   const [previewData, setPreviewData] = useState(null);
 
+  // گزارشات
   const [reportCategory, setReportCategory] = useState('outbound');
   const [reportType, setReportType] = useState('weekly');
   const [reportData, setReportData] = useState(null);
 
+  // تغییر رمز
   const [oldPass, setOldPass] = useState('');
   const [newPass, setNewPass] = useState('');
 
@@ -270,6 +282,21 @@ export default function App() {
     }
   };
 
+  // ویرایش تاریخ انقضای سری خرید
+  const handleUpdateInboundExpiry = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`${API_URL}/drugs/inbound/${editingInbound.inboundId}/expiry`, {
+        expiryDate: editingInbound.newExpiryDate
+      });
+      setIsEditExpiryOpen(false);
+      fetchDrugs();
+      showToast('تاریخ انقضا با موفقیت به‌روزرسانی گردید');
+    } catch (error) {
+      showToast(error.response?.data?.message || error.message, 'error');
+    }
+  };
+
   const handleConfirmAdjustment = async (e) => {
     e.preventDefault();
     try {
@@ -373,13 +400,12 @@ export default function App() {
 
   const totalStockCount = drugs.reduce((acc, d) => acc + d.totalQuantity, 0);
   const lowStockCount = drugs.filter(d => d.isLowStock).length;
-  // اصلاح شمارش کارت نزدیک به انقضا (شامل هر دو وضعیت RED و YELLOW)
   const criticalExpCount = drugs.filter(d => d.expiryStatus === 'RED' || d.expiryStatus === 'YELLOW').length;
 
   return (
     <div className={`min-h-screen dir-rtl p-4 md:p-6 font-sans relative transition-colors duration-300 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
       
-      {/* پیام توست انیمیشن‌دار */}
+      {/* توست انیمیشن‌دار */}
       {toast && (
         <div className={`fixed bottom-6 left-6 z-50 px-5 py-3 rounded-2xl border shadow-2xl flex items-center gap-3 text-sm font-bold toast-box ${
           toast.type === 'error' ? 'bg-red-600 text-white border-red-500' : 'bg-emerald-600 text-white border-emerald-500'
@@ -442,7 +468,7 @@ export default function App() {
         {/* ================= تب ۱: انبار ================= */}
         {activeTab === 'inventory' && (
           <div className="accordion-box">
-            {/* کارت‌های کلیک‌پذیر داشبورد با انیمیشن و شمارش دقیق */}
+            {/* کارت‌های آمار */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
               <div 
                 onClick={() => setCategoryFilter('')} 
@@ -611,7 +637,7 @@ export default function App() {
                             </td>
                           </tr>
 
-                          {/* جزئیات آکاردئونی */}
+                          {/* جزئیات آکاردئونی همراه با دکمه ویرایش تاریخ انقضا */}
                           {isExpanded && (
                             <tr className={darkMode ? 'bg-slate-950/80' : 'bg-slate-50'}>
                               <td colSpan="7" className="p-4 pr-12 accordion-box">
@@ -628,15 +654,30 @@ export default function App() {
                                         </div>
                                         <div className="opacity-60 mb-2">انقضا: {new Date(entry.expiryDate).toLocaleDateString('fa-IR')}</div>
                                         {renderExpiryBadge(entry.status, entry.daysRemainingText)}
-                                        <button
-                                          onClick={() => {
-                                            setAdjustData({ inboundId: entry._id, oldQty: entry.quantity, newQty: entry.quantity, reason: '' });
-                                            setIsEditAdjustOpen(true);
-                                          }}
-                                          className="mt-3 w-full py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 flex items-center justify-center gap-1 font-bold cursor-pointer"
-                                        >
-                                          <Wrench className="w-3 h-3" /> اصلاح موجودی / ضایعات
-                                        </button>
+                                        
+                                        <div className="grid grid-cols-2 gap-2 mt-3">
+                                          <button
+                                            onClick={() => {
+                                              setAdjustData({ inboundId: entry._id, oldQty: entry.quantity, newQty: entry.quantity, reason: '' });
+                                              setIsEditAdjustOpen(true);
+                                            }}
+                                            className="py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 flex items-center justify-center gap-1 font-bold cursor-pointer text-[11px]"
+                                          >
+                                            <Wrench className="w-3 h-3" /> اصلاح ضایعات
+                                          </button>
+                                          
+                                          {/* دکمه ویرایش تاریخ انقضا */}
+                                          <button
+                                            onClick={() => {
+                                              const formattedDate = new Date(entry.expiryDate).toISOString().split('T')[0];
+                                              setEditingInbound({ inboundId: entry._id, newExpiryDate: formattedDate });
+                                              setIsEditExpiryOpen(true);
+                                            }}
+                                            className="py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 flex items-center justify-center gap-1 font-bold cursor-pointer text-[11px]"
+                                          >
+                                            <Calendar className="w-3 h-3" /> ویرایش انقضا
+                                          </button>
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
@@ -654,7 +695,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= تب ۲: گزارشات ================= */}
+        {/* ================= تب ۲: گزارشات (با نمایش نام داروهای حذف‌شده) ================= */}
         {activeTab === 'reports' && (
           <div className={`p-6 rounded-2xl border accordion-box ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -702,9 +743,17 @@ export default function App() {
                   ) : (
                     reportData.logs.map((log) => (
                       <tr key={log._id}>
-                        <td className="p-4 font-bold">{log.drug ? log.drug.name : 'داروی حذف‌شده'}</td>
-                        <td className="p-4 text-xs opacity-70">{log.drug ? log.drug.brand : '-'}</td>
-                        <td className="p-4"><span className="px-2 py-0.5 rounded text-xs border">{log.drug ? log.drug.dosageForm : '-'}</span></td>
+                        <td className="p-4 font-bold">
+                          {log.drug ? log.drug.name : `${log.drugName || 'دارو'} (حذف‌شده)`}
+                        </td>
+                        <td className="p-4 text-xs opacity-70">
+                          {log.drug ? log.drug.brand : (log.drugBrand || '-')}
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 rounded text-xs border">
+                            {log.drug ? log.drug.dosageForm : (log.dosageForm || '-')}
+                          </span>
+                        </td>
                         <td className="p-4 font-bold">
                           {reportCategory === 'inbound' ? (
                             <span className="text-emerald-400 flex items-center gap-1"><TrendingUp className="w-4 h-4" /> {log.initialQuantity || log.quantity}</span>
@@ -747,6 +796,27 @@ export default function App() {
           </div>
         )}
 
+        {/* ================= مودال ویرایش تاریخ انقضا ================= */}
+        {isEditExpiryOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 modal-backdrop">
+            <div className={`rounded-2xl max-w-sm w-full p-6 border shadow-2xl modal-box ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-blue-400">
+                <Calendar className="w-5 h-5" /> ویرایش تاریخ انقضا
+              </h2>
+              <form onSubmit={handleUpdateInboundExpiry} className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold opacity-70">تاریخ انقضای جدید *</label>
+                  <input required type="date" value={editingInbound.newExpiryDate} onChange={(e) => setEditingInbound({...editingInbound, newExpiryDate: e.target.value})} className={`w-full border p-2 rounded-xl text-sm mt-1 ${darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} />
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button type="button" onClick={() => setIsEditExpiryOpen(false)} className="px-4 py-2 rounded-xl text-xs font-semibold opacity-70 cursor-pointer">انصراف</button>
+                  <button type="submit" className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold cursor-pointer">بروزرسانی انقضا</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* ================= مودال اختصاصی تأیید حذف دارو ================= */}
         {isDeleteModalOpen && drugToDelete && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 modal-backdrop">
@@ -758,7 +828,7 @@ export default function App() {
                 <h3 className="text-lg font-bold">تأیید حذف دارو</h3>
               </div>
               <p className="text-xs leading-relaxed opacity-80 mb-6">
-                آیا از حذف کامل داروی <strong className="text-red-400 font-bold">«{drugToDelete.name} ({drugToDelete.brand})»</strong> و تمام سوابق ورود و خروج آن اطمینان دارید؟ این عملیات غیرقابل بازگشت است.
+                آیا از حذف کامل داروی <strong className="text-red-400 font-bold">«{drugToDelete.name} ({drugToDelete.brand})»</strong> اطمینان دارید؟ (سوابق ورود و خروج این دارو برای گزارشات حفظ خواهد شد).
               </p>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setIsDeleteModalOpen(false)} className="px-4 py-2 rounded-xl text-xs font-semibold opacity-70 cursor-pointer hover:bg-slate-800">

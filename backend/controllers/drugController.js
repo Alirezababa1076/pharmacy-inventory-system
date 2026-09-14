@@ -125,6 +125,9 @@ export const addDrugOrInbound = async (req, res) => {
 
     const inbound = await Inbound.create({
       drug: drug._id,
+      drugName: drug.name,
+      drugBrand: drug.brand,
+      dosageForm: drug.dosageForm,
       expiryDate: new Date(expiryDate),
       initialQuantity: Number(quantity),
       quantity: Number(quantity),
@@ -137,7 +140,6 @@ export const addDrugOrInbound = async (req, res) => {
   }
 };
 
-// دریافت لیست داروها با فیلتر هوشمند کارت‌های داشبورد
 export const getDrugsList = async (req, res) => {
   try {
     const { search, dosageForm, categoryFilter, expiryBefore, sortBy } = req.query;
@@ -209,7 +211,6 @@ export const getDrugsList = async (req, res) => {
 
     let result = drugsWithDetails.filter(d => d.entries.length > 0 || !expiryBefore);
 
-    // کلیک روی کارت‌های فیلتر داشبورد
     if (categoryFilter === 'lowStock') {
       result = result.filter((d) => d.isLowStock);
     } else if (categoryFilter === 'expiringSoon') {
@@ -218,13 +219,13 @@ export const getDrugsList = async (req, res) => {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
       const todayInbounds = await Inbound.find({ createdAt: { $gte: startOfToday } });
-      const drugIds = new Set(todayInbounds.map(i => i.drug.toString()));
+      const drugIds = new Set(todayInbounds.map(i => i.drug?.toString()));
       result = result.filter((d) => drugIds.has(d._id.toString()));
     } else if (categoryFilter === 'todayOut') {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
       const todayOutbounds = await Outbound.find({ createdAt: { $gte: startOfToday } });
-      const drugIds = new Set(todayOutbounds.map(o => o.drug.toString()));
+      const drugIds = new Set(todayOutbounds.map(o => o.drug?.toString()));
       result = result.filter((d) => drugIds.has(d._id.toString()));
     }
 
@@ -264,6 +265,9 @@ export const adjustStock = async (req, res) => {
     if (diff > 0) {
       await Outbound.create({
         drug: inbound.drug,
+        drugName: inbound.drugName,
+        drugBrand: inbound.drugBrand,
+        dosageForm: inbound.dosageForm,
         totalQuantity: diff,
         notes: `اصلاح موجودی (از ${oldQty} به ${numNewQty}) - علت: ${reason || 'نامشخص'}`,
         breakdown: [{ inboundId, expiryDate: inbound.expiryDate, quantityDeducted: diff }],
@@ -273,6 +277,26 @@ export const adjustStock = async (req, res) => {
     res.status(200).json({ message: 'موجودی اصلاح شد', inbound });
   } catch (error) {
     res.status(400).json({ message: 'خطا در اصلاح موجودی', error: error.message });
+  }
+};
+
+// ویرایش اختصاصی تاریخ انقضای یک سری خرید
+export const updateInboundExpiry = async (req, res) => {
+  try {
+    const { inboundId } = req.params;
+    const { expiryDate } = req.body;
+
+    const inbound = await Inbound.findByIdAndUpdate(
+      inboundId,
+      { expiryDate: new Date(expiryDate) },
+      { new: true }
+    );
+
+    if (!inbound) return res.status(404).json({ message: 'سری ورود پیدا نشد' });
+
+    res.status(200).json({ message: 'تاریخ انقضا با موفقیت ویرایش شد', inbound });
+  } catch (error) {
+    res.status(400).json({ message: 'خطا در ویرایش تاریخ انقضا', error: error.message });
   }
 };
 
@@ -309,15 +333,22 @@ export const previewWithdrawal = async (req, res) => {
 export const confirmWithdrawal = async (req, res) => {
   try {
     const { drugId, totalQuantity, notes, breakdown } = req.body;
+    const drug = await Drug.findById(drugId);
+
     for (const item of breakdown) {
       await Inbound.findByIdAndUpdate(item.inboundId, { $inc: { quantity: -item.quantityDeducted } });
     }
+
     const outbound = await Outbound.create({
       drug: drugId,
+      drugName: drug ? drug.name : 'دارو',
+      drugBrand: drug ? drug.brand : '-',
+      dosageForm: drug ? drug.dosageForm : '-',
       totalQuantity: Number(totalQuantity),
       notes: notes || '',
       breakdown,
     });
+
     res.status(200).json({ message: 'خروج دارو ثبت شد', outbound });
   } catch (error) {
     res.status(400).json({ message: 'خطا در ثبت نهایی خروج', error: error.message });
@@ -339,13 +370,13 @@ export const updateDrug = async (req, res) => {
   }
 };
 
+// حذف دارو بدون پاک کردن سوابق آن در گزارشات
 export const deleteDrug = async (req, res) => {
   try {
     const { id } = req.params;
     await Drug.findByIdAndDelete(id);
-    await Inbound.deleteMany({ drug: id });
-    await Outbound.deleteMany({ drug: id });
-    res.status(200).json({ message: 'دارو حذف شد' });
+    // فقط خود دارو حذف می‌شود اما Inbound و Outbound جهت گزارشات حفظ می‌شوند
+    res.status(200).json({ message: 'دارو حذف شد و سوابق آن در گزارشات حفظ گردید' });
   } catch (error) {
     res.status(400).json({ message: 'خطا در حذف دارو', error: error.message });
   }
