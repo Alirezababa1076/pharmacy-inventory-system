@@ -7,7 +7,7 @@ import {
   SlidersHorizontal, Wrench, X, History, FileSpreadsheet, Printer, AlertOctagon, Filter, Calendar
 } from 'lucide-react';
 
-const API_URL = 'https://pharmacy-inventory-system-e1iq.onrender.com/api';
+const API_URL = 'https://pharmacy-inventory-system-e11q.onrender.com/api';
 
 function CustomSelect({ options, value, onChange, placeholder, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
